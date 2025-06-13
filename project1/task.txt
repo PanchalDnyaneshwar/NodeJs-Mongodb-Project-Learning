@@ -1,0 +1,15 @@
+REST - Representational state transfer. API - Application programming interface.
+
+REST API - JSON (javascript object notation [key : value]).
+
+GET / Users -> List all users. - DONE
+
+GET / Users/1 -> get the user with ID 1. - DONE 
+GET / Users/2 -> get the user with ID 2.
+
+POST / Users -> Create the user. - DONE
+
+PATCH / Users/id -> Edit the user.
+
+DELETE /Users/id -> DELETE the user.
+
