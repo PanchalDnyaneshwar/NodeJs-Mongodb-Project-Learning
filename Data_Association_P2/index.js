@@ -1,0 +1,110 @@
+require("dotenv").config();
+const express = require("express");
+const app = express();
+
+const bcrypt = require("bcrypt");
+const userModel = require("./models/user");
+const postModel = require("./models/post");
+const cookieParser = require("cookie-parser");
+const jwt = require("jsonwebtoken");
+
+app.set("view engine", "ejs");
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+app.use(cookieParser());
+
+// Middleware to check if user is logged in
+function isLoggedIn(req, res, next){
+    let token = req.coookies.token;
+    if(!token){
+        return res.status(401).send("You are not logged in");
+    }
+    else{
+        let decoded = jwt.verify(token, process.env.JwtSecretKey);
+        req.user = decoded;
+        next();
+    }};
+
+app.get("/", (req, res) => {
+  res.render("index");
+});
+
+app.get("/login", (req, res) => {
+  res.render("login");
+});
+
+app.get("/profile", isLoggedIn, async (req, res) => {
+    
+    res.render("profile", {
+        user: req.user
+    }); 
+});
+
+app.post("/register", async (req, res) => {
+    let { username, name, email, age, password } = req.body;
+
+    if (!username || !name || !email || !age || !password) {
+      return res.status(400).send("Please fill all the fields");
+    }
+
+    let existingUser = await userModel.findOne({ email: email });
+    if (existingUser) {
+      return res.status(400).send("User already exists");
+    }
+
+    const salt = await bcrypt.genSalt(10);
+    const hash = await bcrypt.hash(password, salt);
+
+    let newUser = await userModel({
+      username,
+      name,
+      email,
+      age,
+      password: hash,
+    });
+
+    await newUser.save();
+
+    let token = jwt.sign({ email: email, userid: newUser._id }, process.env.JwtSecretKey);
+    res.cookie("token", token);
+    
+    res.status(201).send("User registered successfully");
+  });
+
+app.post("/login",async (req, res) => {
+   let{email, password} = req.body;
+
+   if(!email || !password){
+    return res.status(400).send("Please fill all the fields");
+   }
+
+   let existingUser = await userModel.findOne({email: email});
+   if(!existingUser){
+    return res.status(400).send("User does not exist");
+   }
+
+   let isPasswordValid = bcrypt.compare(email, existingUser.email);
+ 
+   if(isPasswordValid){
+    return res.status(200).send("Login Succesfully");
+   }
+
+      if(!isPasswordValid){
+     return res.status(400).send("Invalid password");
+    }
+
+   let token = jwt.sign({ email: email, userid: newUser._id }, process.env.JwtSecretKey);
+    res.cookie("token", token);
+
+});
+
+app.get("/logout", (req, res) => {
+    res.clearCookie("token");
+    res.status(200).send("Logged out successfully");
+    res.redirect("/login");
+});
+
+
+app.listen(process.env.PORT, () => {
+  console.log(`Server is running on port http://localhost:${process.env.PORT}`);
+});
